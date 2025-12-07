@@ -30,6 +30,7 @@ st.markdown(
     """
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Bitcount+Prop+Single:wght@400;600&display=swap');
 
     html, body, [data-testid="stAppViewContainer"] {
         background: #f8fbff;
@@ -42,7 +43,12 @@ st.markdown(
         border-right: 1px solid #d0e2ff;
     }
 
-    h1, h2, h3 {
+    /* Make all sidebar text dark so it's readable */
+    [data-testid="stSidebar"] * {
+        color: #102a43 !important;
+    }
+
+    h2, h3 {
         font-weight: 600;
         color: #13406b;
     }
@@ -71,6 +77,33 @@ st.markdown(
         padding: 1rem 1.25rem;
         background: #ffffff;
         border: 1px solid #dbeafe;
+    }
+
+    .logo-circle {
+        width: 52px;
+        height: 52px;
+        border-radius: 50%;
+        background: #e0f2fe;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 28px;
+        margin-right: 0.5rem;
+    }
+
+    .main-title {
+        font-family: 'Bitcount Prop Single', system-ui, -apple-system,
+                     BlinkMacSystemFont, 'Poppins', sans-serif;
+        font-weight: 600;
+        font-size: 2.1rem;
+        margin-bottom: 0.25rem;
+        margin-top: 0.25rem;
+        color: #13406b;
+    }
+
+    .subtitle-text {
+        font-size: 0.95rem;
+        color: #334e68;
     }
     </style>
     """,
@@ -104,6 +137,31 @@ def get_class_counts(result, class_names):
     return dict(counts)
 
 
+def get_defect_locations(result, class_names):
+    """Return a DataFrame with defect type, confidence and bounding box coords."""
+    if len(result.boxes) == 0:
+        return pd.DataFrame(columns=["Defect type", "Confidence", "x1", "y1", "x2", "y2"])
+
+    boxes = result.boxes
+    xyxy = boxes.xyxy.tolist()
+    cls_indices = boxes.cls.tolist()
+    confs = boxes.conf.tolist()
+
+    rows = []
+    for coords, c, cf in zip(xyxy, cls_indices, confs):
+        x1, y1, x2, y2 = coords
+        rows.append({
+            "Defect type": class_names[int(c)],
+            "Confidence": round(float(cf), 2),
+            "x1": round(float(x1), 1),
+            "y1": round(float(y1), 1),
+            "x2": round(float(x2), 1),
+            "y2": round(float(y2), 1),
+        })
+
+    return pd.DataFrame(rows)
+
+
 # ------------------ SIDEBAR ------------------
 with st.sidebar:
     st.title("⚙️ Settings")
@@ -122,9 +180,17 @@ with st.sidebar:
         st.metric("Recall", "0.9765")
 
 # ------------------ MAIN LAYOUT ------------------
-st.title("CircuitGuard – PCB Defect Detection")
+# Logo + main heading
+logo_col, title_col = st.columns([0.08, 0.92])
+with logo_col:
+    st.markdown('<div class="logo-circle">🛡️</div>', unsafe_allow_html=True)
+with title_col:
+    st.markdown(
+        '<div class="main-title">CircuitGuard – PCB Defect Detection</div>',
+        unsafe_allow_html=True,
+    )
 
-# Top model performance card (same numbers as sidebar)
+# Top metrics row (same numbers as sidebar)
 top_metric_col = st.columns(4)
 with top_metric_col[0]:
     st.metric("mAP@50", "0.9823")
@@ -137,9 +203,12 @@ with top_metric_col[3]:
 
 st.markdown(
     """
-    Detect and highlight **PCB defects** such as missing hole, mouse bite,
+    <p class="subtitle-text">
+    Detect and highlight <strong>PCB defects</strong> such as missing hole, mouse bite,
     open circuit, short, spur and spurious copper using a YOLO-based deep learning model.
-    """
+    </p>
+    """,
+    unsafe_allow_html=True,
 )
 
 st.markdown("### Upload PCB Images")
@@ -161,6 +230,8 @@ if uploaded_files:
     except Exception as e:
         st.error(f"Error loading model from `{MODEL_PATH}`: {e}")
     else:
+        global_counts = Counter()
+
         for file in uploaded_files:
             st.markdown(f"#### 📷 {file.name}")
             img = Image.open(file).convert("RGB")
@@ -168,25 +239,42 @@ if uploaded_files:
             with st.spinner("Running detection..."):
                 plotted_img, result = run_inference(model, img)
 
-            # Show detection image
-            st.image(plotted_img, caption="Detections", use_container_width=True)
+            # Show detection image (smaller)
+            st.image(
+                plotted_img,
+                caption="Detections",
+                width=550,   # smaller width instead of full container
+            )
 
-            # Summary + per-image bar chart
+            # Summary text
             if len(result.boxes) == 0:
                 st.success("No defects detected in this image.")
             else:
                 st.info(f"Detected **{len(result.boxes)}** potential defect(s).")
 
+                # Update global defect counts
                 counts = get_class_counts(result, class_names)
-                if counts:
-                    df = pd.DataFrame(
-                        {"Defect Type": list(counts.keys()),
-                         "Count": list(counts.values())}
-                    ).set_index("Defect Type")
+                global_counts.update(counts)
 
-                    st.markdown("**Defect distribution for this image:**")
-                    st.bar_chart(df)
+                # Show defect locations for this image
+                st.markdown("**Defect locations (bounding boxes in pixels):**")
+                loc_df = get_defect_locations(result, class_names)
+                st.dataframe(loc_df, use_container_width=True)
 
             st.markdown("---")
+
+        # After processing all images: single combined bar chart
+        if sum(global_counts.values()) > 0:
+            st.subheader("Overall defect distribution across all uploaded images")
+            global_df = (
+                pd.DataFrame(
+                    {"Defect Type": list(global_counts.keys()),
+                     "Count": list(global_counts.values())}
+                )
+                .set_index("Defect Type")
+            )
+            st.bar_chart(global_df)
+        else:
+            st.info("No defects detected in any of the uploaded images.")
 else:
     st.info("Upload one or more PCB images to start detection.")
