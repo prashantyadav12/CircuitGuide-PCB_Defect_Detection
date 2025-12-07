@@ -1,249 +1,192 @@
-import io
-from typing import List, Dict
+import os
+from collections import Counter
 
 import streamlit as st
-import numpy as np
-import pandas as pd
-from PIL import Image
-
 from ultralytics import YOLO
+from PIL import Image
+import pandas as pd
 
+# ------------------ CONFIG ------------------
 
-# -----------------------------
-# Configuration
-# -----------------------------
-MODEL_PATH = "C:\\Users\\asus\\OneDrive\\Desktop\\yolo by ultralytics\\runs\\detect\\train14\\weights\\best.pt"  # <-- change if needed
-CLASS_NAMES = [
-    # Put your classes in correct order as in your model
-    "missing_hole",
-    "mouse_bite",
-    "open_circuit",
-    "spur",
-    "spurious_copper",
-]
+# Local path on your laptop
+LOCAL_MODEL_PATH = r"C:\Users\asus\OneDrive\Desktop\yolo deploy\best.pt"
+# Path used on Streamlit Cloud (best.pt in same folder as app.py)
+CLOUD_MODEL_PATH = "best.pt"
 
-# -----------------------------
-# Helpers
-# -----------------------------
+# Automatically pick local path if it exists, else use cloud path
+MODEL_PATH = LOCAL_MODEL_PATH if os.path.exists(LOCAL_MODEL_PATH) else CLOUD_MODEL_PATH
+
+CONFIDENCE = 0.25
+IOU = 0.45
+
+st.set_page_config(
+    page_title="CircuitGuard – PCB Defect Detection",
+    page_icon="🛡️",
+    layout="wide"
+)
+
+# ------------------ CUSTOM STYLING ------------------
+st.markdown(
+    """
+    <style>
+    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap');
+
+    html, body, [data-testid="stAppViewContainer"] {
+        background: #f8fbff;
+        font-family: 'Poppins', sans-serif;
+        color: #102a43;
+    }
+
+    [data-testid="stSidebar"] {
+        background: linear-gradient(180deg, #e8f5ff 0%, #e7fff7 100%);
+        border-right: 1px solid #d0e2ff;
+    }
+
+    h1, h2, h3 {
+        font-weight: 600;
+        color: #13406b;
+    }
+
+    .stButton>button {
+        border-radius: 999px;
+        padding: 0.5rem 1.25rem;
+        border: none;
+        font-weight: 500;
+        background: #85c5ff;
+    }
+
+    .stButton>button:hover {
+        background: #63b1ff;
+    }
+
+    .upload-box {
+        border-radius: 18px;
+        border: 1px dashed #a3c9ff;
+        padding: 1.5rem;
+        background: #ffffff;
+    }
+
+    .metric-card {
+        border-radius: 18px;
+        padding: 1rem 1.25rem;
+        background: #ffffff;
+        border: 1px solid #dbeafe;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
+# ------------------ MODEL LOADING & INFERENCE ------------------
 @st.cache_resource
-def load_model(model_path: str):
-    """Load YOLO model once and cache it for all users."""
-    model = YOLO(model_path)
-    return model
+def load_model(path: str):
+    """Load YOLO model once and cache it."""
+    return YOLO(path)
 
 
-def run_inference(model, image: Image.Image, conf: float = 0.25, iou: float = 0.45):
-    """
-    Run YOLO inference on a PIL image and return:
-    - annotated image (np.ndarray)
-    - detections DataFrame
-    - defect summary dict
-    """
-    # Convert PIL to numpy
-    img_array = np.array(image)
-
-    results = model.predict(
-        source=img_array,
-        conf=conf,
-        iou=iou,
-        verbose=False
-    )
-
-    if len(results) == 0:
-        return img_array, pd.DataFrame(), {}
-
+def run_inference(model, image):
+    """Run detection and return plotted image + raw result."""
+    results = model.predict(image, conf=CONFIDENCE, iou=IOU)
     r = results[0]
-
-    # Annotated image
-    annotated = r.plot()  # BGR np.ndarray
-
-    # Boxes & details
-    boxes = r.boxes
-    if boxes is None or len(boxes) == 0:
-        return annotated, pd.DataFrame(), {}
-
-    data = []
-    for box in boxes:
-        cls_id = int(box.cls[0])
-        conf_score = float(box.conf[0])
-
-        # xyxy format: [x1, y1, x2, y2]
-        x1, y1, x2, y2 = box.xyxy[0].tolist()
-
-        class_name = CLASS_NAMES[cls_id] if cls_id < len(CLASS_NAMES) else f"class_{cls_id}"
-
-        data.append(
-            {
-                "class_id": cls_id,
-                "defect_type": class_name,
-                "confidence": round(conf_score, 3),
-                "x1": round(x1, 1),
-                "y1": round(y1, 1),
-                "x2": round(x2, 1),
-                "y2": round(y2, 1),
-            }
-        )
-
-    df = pd.DataFrame(data)
-
-    # Summary: count per class
-    summary = (
-        df.groupby("defect_type")["defect_type"]
-        .count()
-        .rename("count")
-        .to_dict()
-    )
-
-    return annotated, df, summary
+    plotted = r.plot()  # BGR numpy array
+    plotted = plotted[:, :, ::-1]  # BGR -> RGB
+    pil_img = Image.fromarray(plotted)
+    return pil_img, r
 
 
-def rgb_from_bgr(img: np.ndarray) -> np.ndarray:
-    """Convert OpenCV BGR image to RGB for Streamlit."""
-    return img[:, :, ::-1]
+def get_class_counts(result, class_names):
+    """Return a dict: {class_name: count} for one result."""
+    if len(result.boxes) == 0:
+        return {}
+    cls_indices = result.boxes.cls.tolist()
+    labels = [class_names[int(i)] for i in cls_indices]
+    counts = Counter(labels)
+    return dict(counts)
 
 
-# -----------------------------
-# Streamlit UI
-# -----------------------------
-def main():
-    st.set_page_config(
-        page_title="CircuitGuard - PCB Defect Detector",
-        page_icon="🛡️",
-        layout="wide",
-    )
+# ------------------ SIDEBAR ------------------
+with st.sidebar:
+    st.title("⚙️ Settings")
+    st.subheader("Model configuration")
+    st.write("**Active model path:**")
+    st.code(MODEL_PATH, language="text")
 
-    st.title("🛡️ CircuitGuard – PCB Defect Detection")
-    st.write(
-        "Upload PCB images and CircuitGuard will detect and highlight defects such as "
-        "**missing components, solder bridges, misalignment, scratches**, and more."
-    )
-
-    # Sidebar controls
-    st.sidebar.header("⚙️ Settings")
-
-    st.sidebar.subheader("Model Configuration")
-    st.sidebar.write(f"**Model file:** `{MODEL_PATH}`")
-
-    conf_thres = st.sidebar.slider(
-        "Confidence threshold",
-        min_value=0.1,
-        max_value=0.9,
-        value=0.25,
-        step=0.05,
-        help="Lower = more detections (including low confidence), higher = only very confident detections.",
-    )
-
-    iou_thres = st.sidebar.slider(
-        "IoU threshold",
-        min_value=0.1,
-        max_value=0.9,
-        value=0.45,
-        step=0.05,
-        help="Intersection over Union threshold for non-max suppression.",
-    )
-
-    st.sidebar.subheader("Model Performance")
-    #st.sidebar.write("These values come from your test results. Update them in code or make them dynamic:")
-    col_acc1, col_acc2 = st.sidebar.columns(2)
-    with col_acc1:
-        st.metric("mAP@50", "0.9823")  # <-- replace with your real values
+    st.markdown("----")
+    st.subheader("Model performance")
+    col1, col2 = st.columns(2)
+    with col1:
+        st.metric("mAP@50", "0.9823")
         st.metric("Precision", "0.9714")
-    with col_acc2:
+    with col2:
         st.metric("mAP@50-95", "0.5598")
         st.metric("Recall", "0.9765")
 
-    st.sidebar.markdown("---")
-    #st.sidebar.caption("Tip: commit only the final `best.pt` model and not all training runs.")
+# ------------------ MAIN LAYOUT ------------------
+st.title("CircuitGuard – PCB Defect Detection")
 
-    # File uploader
-    st.subheader("📤 Upload PCB Images")
+# Top model performance card (same numbers as sidebar)
+top_metric_col = st.columns(4)
+with top_metric_col[0]:
+    st.metric("mAP@50", "0.9823")
+with top_metric_col[1]:
+    st.metric("mAP@50-95", "0.5598")
+with top_metric_col[2]:
+    st.metric("Precision", "0.9714")
+with top_metric_col[3]:
+    st.metric("Recall", "0.9765")
+
+st.markdown(
+    """
+    Detect and highlight **PCB defects** such as missing hole, mouse bite,
+    open circuit, short, spur and spurious copper using a YOLO-based deep learning model.
+    """
+)
+
+st.markdown("### Upload PCB Images")
+
+with st.container():
+    st.markdown('<div class="upload-box">', unsafe_allow_html=True)
     uploaded_files = st.file_uploader(
-        "Upload one or more images",
+        "Upload one or more PCB images",
         type=["png", "jpg", "jpeg"],
         accept_multiple_files=True,
+        label_visibility="collapsed",
     )
+    st.markdown('</div>', unsafe_allow_html=True)
 
-    if not uploaded_files:
-        st.info("Upload PCB images to see defect detection results.")
-        return
-
-    # Load the model once
+if uploaded_files:
     try:
         model = load_model(MODEL_PATH)
+        class_names = model.names  # dict: {id: name}
     except Exception as e:
         st.error(f"Error loading model from `{MODEL_PATH}`: {e}")
-        st.stop()
+    else:
+        for file in uploaded_files:
+            st.markdown(f"#### 📷 {file.name}")
+            img = Image.open(file).convert("RGB")
 
-    # Process each uploaded image
-    all_summaries = []
+            with st.spinner("Running detection..."):
+                plotted_img, result = run_inference(model, img)
 
-    for file in uploaded_files:
-        st.markdown(f"### 🔍 File: `{file.name}`")
-        col1, col2 = st.columns([2, 1])
+            # Show detection image
+            st.image(plotted_img, caption="Detections", use_container_width=True)
 
-        # Read image
-        image = Image.open(io.BytesIO(file.read())).convert("RGB")
-
-        with col1:
-            st.caption("Original Image")
-            st.image(image, use_column_width=True)
-
-        # Run inference
-        annotated, df_dets, summary = run_inference(
-            model=model,
-            image=image,
-            conf=conf_thres,
-            iou=iou_thres,
-        )
-
-        with col1:
-            st.caption("Detected Defects")
-            st.image(rgb_from_bgr(annotated), use_column_width=True)
-
-        with col2:
-            st.caption("Defect Summary")
-            if summary:
-                sum_df = pd.DataFrame(
-                    [
-                        {"Defect type": k, "Count": v}
-                        for k, v in summary.items()
-                    ]
-                ).sort_values("Count", ascending=False)
-
-                st.table(sum_df)
-
-                st.bar_chart(
-                    sum_df.set_index("Defect type")["Count"],
-                    use_container_width=True,
-                )
-
-                total_defects = sum(summary.values())
-                all_summaries.append(
-                    {
-                        "file": file.name,
-                        "total_defects": total_defects,
-                        **{f"{k}_count": v for k, v in summary.items()},
-                    }
-                )
-
+            # Summary + per-image bar chart
+            if len(result.boxes) == 0:
+                st.success("No defects detected in this image.")
             else:
-                st.info("No defects detected above the selected confidence threshold.")
+                st.info(f"Detected **{len(result.boxes)}** potential defect(s).")
 
-        # Detailed detection table
-        with st.expander(f"📋 Detailed detections for `{file.name}`"):
-            if df_dets.empty:
-                st.write("No detections.")
-            else:
-                st.dataframe(df_dets, use_container_width=True)
+                counts = get_class_counts(result, class_names)
+                if counts:
+                    df = pd.DataFrame(
+                        {"Defect Type": list(counts.keys()),
+                         "Count": list(counts.values())}
+                    ).set_index("Defect Type")
 
-        st.markdown("---")
+                    st.markdown("**Defect distribution for this image:**")
+                    st.bar_chart(df)
 
-    # Combined summary across images
-    if all_summaries:
-        st.subheader("📊 Overall Summary (All Uploaded Images)")
-        overall_df = pd.DataFrame(all_summaries)
-        st.dataframe(overall_df, use_container_width=True)
-
-
-if __name__ == "__main__":
-    main()
+            st.markdown("---")
+else:
+    st.info("Upload one or more PCB images to start detection.")
