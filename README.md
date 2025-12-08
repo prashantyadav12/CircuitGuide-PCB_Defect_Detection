@@ -58,6 +58,7 @@ yolo-gpu\Scripts\activate
 
 # Activate (Linux/macOS)
 source yolo-gpu/bin/activate
+
 (“You do NOT need the same environment name (yolo-gpu).  
 After cloning the repo, create any virtual environment and run:  
 pip install -r requirements.txt”)
@@ -71,7 +72,7 @@ streamlit run app.py
 
 #Model Performance
 CircuitGuard was trained on a custom PCB defect dataset with an 80:20 train-test split.
-![CircuitGuard accuracy](screenshots/Screenshot 2025-12-09 003154.png)
+![CircuitGuard accuracy](screenshots/1.png)
 
 🔎 High precision and recall show strong defect detection reliability with minimal false positives/negatives.
 
@@ -93,20 +94,20 @@ Download report and annotated image (optional)
 
 #Sample outputs:
  * Annotated images
-![CircuitGuard accuracy](screenshots/Screenshot 2025-12-09 003559.png)
-![CircuitGuard accuracy](screenshots/Screenshot 2025-12-09 003628.png)
+![CircuitGuard accuracy](screenshots/2.png)
+![CircuitGuard accuracy](screenshots/3.png)
 
  * CSV file having exact defect location:
 
-![CircuitGuard accuracy](screenshots/Screenshot 2025-12-09 004016.png)
+![CircuitGuard accuracy](screenshots/4.png)
 
 ---
 
 #Screenshots of the website
-![CircuitGuard accuracy](screenshots/Screenshot 2025-12-09 003742.png)
-![CircuitGuard accuracy](screenshots/Screenshot 2025-12-09 003823.png)
-![CircuitGuard accuracy](screenshots/Screenshot 2025-12-09 003846.png)
-![CircuitGuard accuracy](screenshots/Screenshot 2025-12-09 003918.png)
+![CircuitGuard accuracy](screenshots/5.png)
+![CircuitGuard accuracy](screenshots/6.png)
+![CircuitGuard accuracy](screenshots/7.png)
+![CircuitGuard accuracy](screenshots/8.png)
 
 ---
 
@@ -117,6 +118,7 @@ Download report and annotated image (optional)
  * PCB defect datasets used for research and training
 
 ---
+
 
 
 
