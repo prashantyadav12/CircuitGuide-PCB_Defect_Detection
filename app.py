@@ -563,8 +563,7 @@ if uploaded_files:
                 st.markdown("---")
 
         # --------- Overall charts (bar + donut) ----------
-
-                   if sum(global_counts.values()) > 0:
+        if sum(global_counts.values()) > 0:
             st.subheader("Overall defect distribution across all uploaded images")
             global_df = pd.DataFrame(
                 {
@@ -575,7 +574,7 @@ if uploaded_files:
 
             col_bar, col_donut = st.columns([2.2, 1])
 
-            # FIXED bar chart – fits without fullscreen
+            # Bar chart – fits without fullscreen
             with col_bar:
                 bar_chart = (
                     alt.Chart(global_df)
@@ -599,7 +598,7 @@ if uploaded_files:
                 )
                 st.altair_chart(bar_chart, use_container_width=True)
 
-            # NEW donut chart
+            # Donut chart – compact, side-by-side with bar chart
             with col_donut:
                 st.markdown("#### Defect type share")
                 donut_chart = (
@@ -619,8 +618,7 @@ if uploaded_files:
                         padding={"left": 0, "right": 0, "top": 10, "bottom": 10},
                     )
                 )
-                st.altair_chart(donut_chart, use_container_width=True)
-
+                st.altair_chart(donut_chart, use_column_width=True)
 
         else:
             st.info("No defects detected in any of the uploaded images.")
