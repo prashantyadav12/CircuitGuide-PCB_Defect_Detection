@@ -562,7 +562,7 @@ if uploaded_files:
 
                 st.markdown("---")
 
-        # --------- Overall charts (bar + donut) ----------
+               # --------- Overall charts (bar + donut) ----------
         if sum(global_counts.values()) > 0:
             st.subheader("Overall defect distribution across all uploaded images")
             global_df = pd.DataFrame(
@@ -572,9 +572,9 @@ if uploaded_files:
                 }
             )
 
-            col_bar, col_donut = st.columns([2.2, 1])
+            # 2 columns, left = bar, right = donut
+            col_bar, col_donut = st.columns([3, 2])
 
-            # Bar chart – fits without fullscreen
             with col_bar:
                 bar_chart = (
                     alt.Chart(global_df)
@@ -592,13 +592,10 @@ if uploaded_files:
                         height=260,
                         padding={"left": 5, "right": 5, "top": 10, "bottom": 10},
                     )
-                    .configure_view(
-                        strokeWidth=0
-                    )
+                    .configure_view(strokeWidth=0)
                 )
                 st.altair_chart(bar_chart, use_container_width=True)
 
-            # Donut chart – compact, side-by-side with bar chart
             with col_donut:
                 st.markdown("#### Defect type share")
                 donut_chart = (
@@ -613,16 +610,16 @@ if uploaded_files:
                         tooltip=["Defect Type", "Count"],
                     )
                     .properties(
-                        width=260,
-                        height=260,
+                        width=230,
+                        height=230,
                         padding={"left": 0, "right": 0, "top": 10, "bottom": 10},
                     )
                 )
-                st.altair_chart(donut_chart, use_container_width=True)
-
-
+                # don't stretch too much; keep it compact in its column
+                st.altair_chart(donut_chart, use_container_width=False)
         else:
             st.info("No defects detected in any of the uploaded images.")
+
 
         # -------- Export flow: Finish + Download (CSV + annotated images) --------
         if st.session_state["full_results_df"] is not None:
