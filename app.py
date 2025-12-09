@@ -219,16 +219,17 @@ st.markdown(
 
     /* Robotic success message */
     .robot-success {
-        margin: 1rem 0;
-        padding: 0.75rem 1rem;
-        border-radius: 10px;
-        background: radial-gradient(circle at 0 0, #bbf7d0 0, #bbf7d0 10%, #0f172a 55%);
-        color: #e5e7eb;
+        margin: 1rem 0 0.4rem 0;
+        padding: 0.8rem 1.2rem;
+        border-radius: 12px;
+        background: linear-gradient(90deg, #0f172a 0%, #1f2937 55%, #16a34a 100%);
+        color: #e5f9ff;
         font-family: 'JetBrains Mono', SFMono-Regular, Menlo, monospace;
-        font-size: 0.85rem;
-        letter-spacing: 0.08em;
+        font-size: 0.9rem;
+        letter-spacing: 0.09em;
         position: relative;
         overflow: hidden;
+        text-transform: uppercase;
     }
     .robot-success::after {
         content: "";
@@ -236,25 +237,36 @@ st.markdown(
         inset: 0;
         background: repeating-linear-gradient(
             0deg,
-            rgba(15, 23, 42, 0.0),
-            rgba(15, 23, 42, 0.0) 2px,
-            rgba(148, 163, 184, 0.18) 3px
+            rgba(148, 163, 184, 0.0),
+            rgba(148, 163, 184, 0.0) 2px,
+            rgba(148, 163, 184, 0.25) 3px
         );
         mix-blend-mode: soft-light;
-        opacity: 0.7;
+        opacity: 0.4;
         pointer-events: none;
         animation: scanlines 6s linear infinite;
     }
     @keyframes scanlines {
-        0% { transform: translateY(-4px); }
-        100% { transform: translateY(4px); }
+        0% { transform: translateY(-3px); }
+        100% { transform: translateY(3px); }
     }
     .robot-label {
-        color: #bbf7d0;
-        margin-right: 0.5rem;
+        color: #a7f3d0;
+        margin-right: 0.75rem;
     }
 
-    /* Keep charts responsive and fully visible */
+    /* Clear info strip under robot banner */
+    .status-strip {
+        margin: 0.1rem 0 1.2rem 0;
+        padding: 0.65rem 1.1rem;
+        border-radius: 999px;
+        background: #d1fae5;
+        color: #064e3b;
+        font-size: 0.9rem;
+        font-weight: 500;
+    }
+
+    /* Keep Altair charts responsive and fully visible */
     .vega-embed, .vega-embed canvas {
         max-width: 100% !important;
     }
@@ -474,17 +486,19 @@ if uploaded_files:
             st.session_state["full_results_df"] = None
             st.session_state["annotated_images"] = []
 
-        # Robotic animated success banner
+        # Robotic animated success banner + clear info strip
         st.markdown(
             """
             <div class="robot-success">
               <span class="robot-label">[SYSTEM]</span>
               DEFECT SCAN COMPLETE — ANALYSIS DASHBOARD ONLINE.
             </div>
+            <div class="status-strip">
+              Detection complete. Scroll down to view detailed results and download options.
+            </div>
             """,
             unsafe_allow_html=True,
         )
-        st.success("Detection completed. Scroll down to view detailed results and download options.")
 
         # Overview grid
         if image_results:
@@ -560,7 +574,7 @@ if uploaded_files:
 
             col_bar, col_donut = st.columns([2.2, 1])
 
-            # FIXED bar chart – fits without fullscreen
+            # Bar chart – fits without fullscreen
             with col_bar:
                 bar_chart = (
                     alt.Chart(global_df)
@@ -584,12 +598,12 @@ if uploaded_files:
                 )
                 st.altair_chart(bar_chart, use_container_width=True)
 
-            # NEW donut chart
+            # Donut chart – compact, side-by-side with bar chart
             with col_donut:
                 st.markdown("#### Defect type share")
                 donut_chart = (
                     alt.Chart(global_df)
-                    .mark_arc(innerRadius=50, outerRadius=90)
+                    .mark_arc(innerRadius=55, outerRadius=100)
                     .encode(
                         theta=alt.Theta("Count:Q", stack=True),
                         color=alt.Color(
@@ -598,7 +612,11 @@ if uploaded_files:
                         ),
                         tooltip=["Defect Type", "Count"],
                     )
-                    .properties(height=260)
+                    .properties(
+                        width=260,
+                        height=260,
+                        padding={"left": 0, "right": 0, "top": 10, "bottom": 10},
+                    )
                 )
                 st.altair_chart(donut_chart, use_container_width=True)
 
