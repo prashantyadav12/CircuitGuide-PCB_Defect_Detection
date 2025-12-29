@@ -1,3 +1,6 @@
+import base64
+from io import BytesIO
+import requests
 import os
 from collections import Counter
 import io
@@ -10,7 +13,7 @@ import pandas as pd
 import altair as alt
 
 # ------------------ CONFIG ------------------
-
+API_URL = "http://127.0.0.1:8000/predict"
 LOCAL_MODEL_PATH = r"C:\Users\asus\OneDrive\Desktop\yolo deploy\best.pt"
 CLOUD_MODEL_PATH = "best.pt"
 
@@ -20,10 +23,12 @@ CONFIDENCE = 0.25
 IOU = 0.45
 
 st.set_page_config(
-    page_title="CircuitGuard – PCB Defect Detection",
-    page_icon="🛡️",
+    page_title="PCB Defect Detection",
+    page_icon="🎄",
     layout="wide"
 )
+
+
 
 # ------------------ CUSTOM STYLING ------------------
 st.markdown(
@@ -167,8 +172,8 @@ st.markdown(
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        margin-top: 0.5rem;
-        margin-bottom: 0.75rem;
+        margin-top: 0.2rem;
+        margin-bottom: 0.6rem;
     }
 
     .main-title {
@@ -270,6 +275,23 @@ st.markdown(
     .vega-embed, .vega-embed canvas {
         max-width: 100% !important;
     }
+    /* Fix YOLO yellow warning box */
+div[role="alert"] {
+    background-color: #ffffff !important;  /* white background */
+    color: #111827 !important;             /* black text */
+    border: 1px solid #d1d5db !important;
+}
+div[role="alert"] * {
+    color: #111827 !important;
+}
+/* ===== HIDE STREAMLIT DEFAULT FILE REMOVE ❌ ===== */
+button[title="Remove file"],
+button[aria-label="Remove file"],
+button[aria-label="Remove"],
+div[data-testid="stFileUploader"] button {
+    display: none !important;
+}
+
     </style>
     """,
     unsafe_allow_html=True,
@@ -338,53 +360,44 @@ def get_defect_locations(result, class_names, image_name):
 
 # ------------------ SIDEBAR ------------------
 with st.sidebar:
-    st.title("⚙️ Settings")
-    st.subheader("Model configuration")
-    st.write("**Active model path:**")
-    st.code(MODEL_PATH, language="text")
+    # ---------- MODEL PERFORMANCE ----------
+    st.subheader("📊 Model Performance")
+    st.markdown("""
+    **mAP@50:** 0.9823  
+    **mAP@50–95:** 0.5598  
+    **Precision:** 0.9714  
+    **Recall:** 0.9765
+    """)
 
-    st.markdown("----")
-    st.subheader("Model performance")
-    st.markdown(
-        """
-        **mAP@50:** 0.9823  
-        **mAP@50–95:** 0.5598  
-        **Precision:** 0.9714  
-        **Recall:** 0.9765
-        """
-    )
+    st.markdown("---")
+
+    # ---------- HOW TO USE ----------
+    st.subheader("🧭 How to Use")
+    st.markdown("""
+    1. Upload clear PCB images (top view).
+    2. Wait for the AI to process defects.
+    3. Review annotated outputs.
+    4. Download images or ZIP results.
+    """)
+
+    st.markdown("---")
+
+    # ---------- SETTINGS (BOTTOM) ----------
+    st.subheader("⚙️ Settings")
+    st.caption("Model loaded successfully")
 
 # ------------------ MAIN LAYOUT ------------------
 st.markdown(
     """
     <div class="header-container">
-        <div class="logo-circle">🛡️</div>
+        <div class="logo-circle">🎄</div>
         <div class="main-title">CircuitGuard – PCB Defect Detection</div>
     </div>
     """,
     unsafe_allow_html=True,
 )
 
-# Top metrics row with custom cards
-metric_cols = st.columns(4)
-metric_info = [
-    ("mAP@50", "0.9823"),
-    ("mAP@50–95", "0.5598"),
-    ("Precision", "0.9714"),
-    ("Recall", "0.9765"),
-]
-for col, (label, value) in zip(metric_cols, metric_info):
-    with col:
-        st.markdown(
-            f"""
-            <div class="metric-card">
-              <div class="metric-label">{label}</div>
-              <div class="metric-value">{value}</div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-
+# Subtitle ✅ (ONLY ONCE)
 st.markdown(
     """
     <p class="subtitle-text">
@@ -395,24 +408,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# Instructions card
-st.markdown(
-    """
-    <div class="instruction-card">
-      <strong>🧭 How to use CircuitGuard:</strong>
-      <ol>
-        <li>Prepare clear PCB images (top view, good lighting).</li>
-        <li>Upload one or more images using the box below.</li>
-        <li>Wait for the model to run – we’ll generate annotated results.</li>
-        <li>Review the overview grid, then scroll to see before/after views for each image.</li>
-        <li>Download individual annotated images or a ZIP with CSV + all annotated outputs.</li>
-      </ol>
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
-
-# Highlight defect types
+# Defect badges ✅ (ONLY ONCE)
 st.markdown(
     """
     **Defect types detected by this model:**
@@ -428,6 +424,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
+# ---------------- UPLOAD SECTION ----------------
 st.markdown("### Upload PCB Images")
 
 with st.container():
@@ -440,8 +437,35 @@ with st.container():
     )
     st.markdown('</div>', unsafe_allow_html=True)
 
-# ------------------ DETECTION & DISPLAY ------------------
+# -------- STORE UPLOADED FILES IN SESSION --------
 if uploaded_files:
+    st.session_state["uploaded_files"] = uploaded_files
+
+# -------- UPLOADED IMAGES WITH CUSTOM REMOVE ❌ --------
+if "uploaded_files" in st.session_state and st.session_state["uploaded_files"]:
+
+    st.markdown("### Uploaded images")
+
+    remaining_files = []
+
+    for idx, f in enumerate(st.session_state["uploaded_files"]):
+        col1, col2 = st.columns([0.9, 0.1])
+
+        with col1:
+            st.markdown(f"🖼️ **{f.name}**")
+
+        with col2:
+            if st.button("❌", key=f"remove_{idx}"):
+                continue  # skip this file (removed)
+
+        remaining_files.append(f)
+
+    st.session_state["uploaded_files"] = remaining_files
+
+
+
+# ------------------ DETECTION & DISPLAY ------------------
+if "uploaded_files" in st.session_state and st.session_state["uploaded_files"]:
     try:
         model = load_model(MODEL_PATH)
         class_names = model.names  # dict: {id: name}
@@ -452,28 +476,59 @@ if uploaded_files:
         all_rows = []
         image_results = []  # original, annotated, result, loc_rows
 
-        # Run detection for all images first
-        for file in uploaded_files:
+        # Run detection for all remaining images
+        for file in st.session_state["uploaded_files"]:
             img = Image.open(file).convert("RGB")
 
             with st.spinner(f"Running detection on {file.name}..."):
-                plotted_img, result = run_inference(model, img)
 
-            counts = get_class_counts(result, class_names)
-            global_counts.update(counts)
-
-            loc_rows = get_defect_locations(result, class_names, file.name)
-            all_rows.extend(loc_rows)
-
-            image_results.append(
-                {
-                    "name": file.name,
-                    "original": img,
-                    "annotated": plotted_img,
-                    "result": result,
-                    "loc_rows": loc_rows,
+                files = {
+                    "file": (file.name, file.getvalue(), file.type)
                 }
-            )
+
+                response = requests.post(API_URL, files=files)
+
+                if response.status_code != 200:
+                    st.error(f"Backend error for {file.name}")
+                    continue
+
+                api_result = response.json()
+                defect_counts = api_result["defects_detected"]
+                total_defects = api_result["total_defects"]
+
+                global_counts.update(defect_counts)
+
+                api_result = response.json()
+
+                defect_counts = api_result["defects_detected"]
+                total_defects = api_result["total_defects"]
+
+                # -------- decode annotated image --------
+                img_base64 = api_result["annotated_image"]
+                img_bytes = base64.b64decode(img_base64)
+                annotated_img = Image.open(BytesIO(img_bytes))
+
+                image_results.append(
+                    {
+                        "name": file.name,
+                        "original": img,
+                        "annotated": img,   # abhi same image (next step me backend se annotated aayegi)
+                        "defect_counts": defect_counts,
+                        "total": total_defects,
+                    }
+                )
+
+                image_results.append(
+                    {
+                        "name": file.name,
+                        "original": img,
+                        "annotated": annotated_img,  # ✅ REAL annotated image
+                        "defect_counts": defect_counts,
+                        "total": total_defects,
+                    }
+                )
+
+
 
         # Build full results DF for export (all images)
         if all_rows:
@@ -546,19 +601,14 @@ if uploaded_files:
                         key=f"download_single_{idx}",
                     )
 
-                result = res["result"]
-                if len(result.boxes) == 0:
+                
+                if res["total"] == 0:
                     st.success("No defects detected in this image.")
                 else:
-                    st.info(f"Detected **{len(result.boxes)}** potential defect(s).")
+                    st.info(f"Detected **{res['total']}** potential defect(s).")
 
-                if res["loc_rows"]:
-                    loc_df = pd.DataFrame(res["loc_rows"])
-                    st.markdown("**Defect locations (bounding boxes in pixels):**")
-                    st.dataframe(
-                        loc_df.drop(columns=["Image"]),
-                        use_container_width=True,
-                    )
+
+                
 
                 st.markdown("---")
 
@@ -654,3 +704,4 @@ if uploaded_files:
                 )
 else:
     st.info("Upload one or more PCB images to start detection.")
+

@@ -1,126 +1,137 @@
-🛡️CircuitGuard – PCB Defect Detection using YOLO & Streamlit
-
-CircuitGuard is an AI-based PCB defect detection system powered by deep learning, utilizing the YOLOv11m model.
-It uses a custom-trained YOLO model and provides an interactive Streamlit interface for uploading images, visualizing defect locations, viewing defect summaries, and exporting reports.
----
-#Key Features
--  Automatic PCB defect detection from uploaded images
-- Exact defect location with bounding box visualizations
-- Defect summary dashboard (bar graph showing count per defect )
-- Model performance indicators (mAP, precision, recall)
-- Downloadable final results in zip file format containing:
-CSV having the exact defect location
-Annotated image (image with drawn bounding boxes)
-- 100% Streamlit-based — no external backend required
-
----
-#Tech Stack
-Component
-Technology
-Model
-YOLO (Ultralytics)
-Language
-Python 3.11.6
-Framework
-Streamlit
-Deployment
-Local/Cloud via Streamlit
-
----
-#Project Structure
-
+🧠 CircuitGuard – PCB Defect Detection System
+CircuitGuard is an end-to-end PCB defect detection system built using YOLO (Deep Learning), FastAPI (Backend), and Streamlit (Frontend).
+It detects and visualizes common PCB manufacturing defects from uploaded images and provides annotated outputs, statistics, and downloadable results.
+🚀 Features
+🔍 Detects 6 PCB defect types
+Missing hole
+Mouse bite
+Open circuit
+Short
+Spur
+Spurious copper
+🖼️ Annotated defect visualization (bounding boxes + confidence)
+📊 Defect statistics (bar chart + donut chart)
+📁 Backend image storage for traceability
+⬇️ Download annotated images and CSV/ZIP reports
+⚡ Real-time inference using YOLO
+🌐 Modular frontend–backend architecture
+🏗️ Project Architecture
 CircuitGuard/
 │
-├── app.py                           # Main Streamlit app (UI + inference)
-├── predict.py                     # Script for running predictions 
-├── best.pt                           # Trained YOLO model weights
-├── requirements.txt        # dependencies for the website
-├── packages.txt                 # Extra packages list 
-├── runtime.txt                  # Python runtime version (for deployment 3.11)
-├── README.md              # Project documentation
+├── app.py                     # Streamlit Frontend
+├── pcb-defect-backend/
+│   ├── main.py                # FastAPI Backend
+│   ├── model/
+│   │   └── best.pt            # Trained YOLO model
+│   ├── uploads/               # Images saved by backend
+│   └── __pycache__/
 │
-├── .devcontainer/
-│   └── devcontainer.json  # Dev container config 
-├── .gitattributes                 # Git attributes configuration
-
-
-
----
-# 🔧 Setup & Installation
-
-1. Clone the Repository
-git clone https://github.com/prachi-2506/CircuitGuard.git
-cd CircuitGuard
-2. Create & Activate Virtual Environment
-python -m venv yolo-gpu
-# Activate (Windows)
-yolo-gpu\Scripts\activate
-
-# Activate (Linux/macOS)
-source yolo-gpu/bin/activate
-
-(“You do NOT need the same environment name (yolo-gpu).  
-After cloning the repo, create any virtual environment and run:  
-pip install -r requirements.txt”)
-3. Install Dependencies
-pip install -r requirements.txt
-
-4. Run the Application
-streamlit run app.py
-
----
-
-#Model Performance
-CircuitGuard was trained on a custom PCB defect dataset with an 80:20 train-test split.
-![CircuitGuard accuracy](screenshots/1.png)
-
-🔎 High precision and recall show strong defect detection reliability with minimal false positives/negatives.
-
----
-
-#How to Use
-Run the app locally
-
-
-Upload an image (drag-and-drop or file picker)
-
-
-View annotated output + defect summary
-
-
-Download report and annotated image (optional)
-
----
-
-#Sample outputs:
- * Annotated images
-![CircuitGuard accuracy](screenshots/2.png)
-![CircuitGuard accuracy](screenshots/3.png)
-
- * CSV file having exact defect location:
-
-![CircuitGuard accuracy](screenshots/4.png)
-
----
-
-#Screenshots of the website
-![CircuitGuard accuracy](screenshots/5.png)
-![CircuitGuard accuracy](screenshots/6.png)
-![CircuitGuard accuracy](screenshots/7.png)
-![CircuitGuard accuracy](screenshots/8.png)
-
----
-
-
-#Acknowledgements
- * Ultralytics YOLO
- * Streamlit
- * PCB defect datasets used for research and training
-
----
-
-
-
+├── requirements.txt
+├── packages.txt
+├── runtime.txt
+├── README.md
+└── screenshots/
+🔄 System Workflow (IMPORTANT)
+🔹 Before Backend (Old Setup)
+Streamlit frontend directly loaded YOLO model
+Inference + annotation happened inside frontend
+No backend involvement
+No image persistence
+🔹 After Backend Integration (Current Setup)
+Frontend (Streamlit)
+   ↓  HTTP POST /predict
+Backend (FastAPI)
+   ↓  Saves image to /uploads
+   ↓  Runs YOLO inference
+   ↓  Returns JSON response
+Frontend
+   ↓  Displays annotated results
+✔ This proves frontend ↔ backend connection
+🧪 Backend Proof of Connection
+When an image is uploaded from frontend:
+It is saved here:
+pcb-defect-backend/uploads/
+Example:
+uploads/
+ ├── 01_missing_hole_10.jpg
+ ├── 01_spur_09.jpg
+This confirms:
+Frontend uploads → Backend receives → Backend stores
+🖥️ Frontend (Streamlit)
+Responsibilities
+Image upload (single / multiple)
+Sends images to backend API
+Displays:
+Original image
+Annotated image
+Defect count
+Charts & statistics
+Allows downloads (image / ZIP)
+Run Frontend
+python -m streamlit run app.py
+Frontend runs on:
+http://localhost:8501
+⚙️ Backend (FastAPI)
+Responsibilities
+Accept image via /predict endpoint
+Save image to disk
+Run YOLO inference
+Return structured JSON response
+Run Backend
+cd pcb-defect-backend
+uvicorn main:app --reload
+Backend runs on:
+http://127.0.0.1:8000
+Swagger Docs:
+http://127.0.0.1:8000/docs
+📡 API Endpoint
+POST /predict
+Input
+Multipart form-data
+Image file (png, jpg, jpeg)
+Response
+{
+  "status": "success",
+  "defects_detected": {
+    "spur": 1
+  },
+  "total_defects": 1
+}
+📊 Visual Outputs
+Annotated PCB images (bounding boxes + labels)
+Bar chart: defect count
+Donut chart: defect distribution
+Detailed per-image defect tables
+🧠 Model Details
+Model: YOLO (Ultralytics)
+Input: PCB top-view images
+Performance:
+mAP@50: 0.98
+Precision: 0.97
+Recall: 0.97
+⚠️ Known Limitations
+Frontend still does some local processing for visualization
+Duplicate images may appear if both local + backend results are rendered
+Backend currently returns limited metadata (can be extended)
+🔮 Future Improvements
+Full backend-driven annotation rendering
+Database integration (MongoDB / PostgreSQL)
+Authentication & user sessions
+Dockerization
+Cloud deployment (AWS / Azure)
+Async batch processing
+🧑‍💻 Tech Stack
+Python 3.11
+YOLO (Ultralytics)
+FastAPI
+Streamlit
+OpenCV / PIL
+Altair
+Uvicorn
+👨‍🎓 Author
+Prashant Yadav
+B.Tech CSE (AI)
+PCB Defect Detection – Internship Project
 
 
 
