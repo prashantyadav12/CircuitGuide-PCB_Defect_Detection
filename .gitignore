@@ -1,18 +1,16 @@
-# macOS
-.DS_Store
-
-# Python cache
+# Python
 __pycache__/
 *.pyc
 
 # Virtual environment
 venv/
 
+# OS files
+.DS_Store
+
+# Model & runtime data
+pcb-defect-backend/uploads/
+pcb-defect-backend/model/*.pt
+
 # Streamlit cache
 .streamlit/
-
-# Backend runtime data
-pcb-defect-backend/uploads/
-
-# Backend cache
-pcb-defect-backend/__pycache__/
