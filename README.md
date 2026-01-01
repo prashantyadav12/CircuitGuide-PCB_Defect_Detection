@@ -1,212 +1,80 @@
-# 🧠 CircuitGuard – PCB Defect Detection System
+PROJECT_NAME: CircuitGuard – Intelligent PCB Defect Detection System
 
-CircuitGuard is an **end-to-end PCB defect detection system** built using  
-**YOLO (Deep Learning)**, **FastAPI (Backend)**, and **Streamlit (Frontend)**.
+OVERVIEW:
+CircuitGuard is a production-oriented PCB defect detection system designed
+to demonstrate real-world deployment of deep learning models.
+The system integrates a YOLO-based computer vision model with a FastAPI backend
+and a Streamlit frontend to deliver an end-to-end defect inspection pipeline.
+It enables automated quality inspection, visual analytics, and report generation
+for printed circuit boards (PCBs).
 
-It detects common PCB manufacturing defects from uploaded images and provides  
-**annotated visual outputs, defect statistics, and downloadable reports**.
+KEY_HIGHLIGHTS:
+- End-to-end ML system (Frontend + Backend + Model)
+- Clear client–server separation using REST APIs
+- Real-time defect detection with visual feedback
+- Industry-style deployment workflow
+- Scalable and modular architecture
 
----
+TECHNOLOGY_STACK:
+- Programming Language: Python 3.11
+- Deep Learning Model: YOLO (Ultralytics)
+- Backend Framework: FastAPI
+- Frontend Framework: Streamlit
+- Image Processing: OpenCV, PIL
+- Server: Uvicorn
+- Version Control: Git, GitHub (LFS enabled for model files)
 
-## 🚀 Features
+SUPPORTED_DEFECT_TYPES:
+- Missing Hole
+- Mouse Bite
+- Open Circuit
+- Short Circuit
+- Spur
+- Spurious Copper
 
-- 🔍 Detects **6 PCB defect types**
-  - Missing Hole  
-  - Mouse Bite  
-  - Open Circuit  
-  - Short  
-  - Spur  
-  - Spurious Copper  
+SYSTEM_ARCHITECTURE:
+User
+ → Streamlit Frontend (UI & Visualization)
+ → REST API (HTTP POST /predict)
+ → FastAPI Backend (Inference Engine)
+ → YOLO Model (best.pt)
+ → JSON Response + Annotated Outputs
+ → Frontend Dashboard & Downloads
 
-- 🖼️ **Annotated defect visualization**
-  - Bounding boxes
-  - Class labels
-  - Confidence scores
-
-- 📊 **Defect analytics**
-  - Bar chart (defect count)
-  - Donut chart (defect distribution)
-
-- 💾 **Backend image storage** for traceability
-
-- 📥 **Download options**
-  - Annotated images
-  - CSV + ZIP reports
-
-- ⚡ **Real-time inference** using YOLO
-
-- 🧩 **Modular frontend–backend architecture**
-
----
-
-## 🏗️ Project Architecture
-
-# 🧠 CircuitGuard – PCB Defect Detection System
-
-CircuitGuard is an **end-to-end PCB defect detection system** built using  
-**YOLO (Deep Learning)**, **FastAPI (Backend)**, and **Streamlit (Frontend)**.
-
-It detects common PCB manufacturing defects from uploaded images and provides  
-**annotated visual outputs, defect statistics, and downloadable reports**.
-
----
-
-## 🚀 Features
-
-- 🔍 Detects **6 PCB defect types**
-  - Missing Hole  
-  - Mouse Bite  
-  - Open Circuit  
-  - Short  
-  - Spur  
-  - Spurious Copper  
-
-- 🖼️ **Annotated defect visualization**
-  - Bounding boxes
-  - Class labels
-  - Confidence scores
-
-- 📊 **Defect analytics**
-  - Bar chart (defect count)
-  - Donut chart (defect distribution)
-
-- 💾 **Backend image storage** for traceability
-
-- 📥 **Download options**
-  - Annotated images
-  - CSV + ZIP reports
-
-- ⚡ **Real-time inference** using YOLO
-
-- 🧩 **Modular frontend–backend architecture**
-
----
-
-## 🏗️ Project Architecture
-
+PROJECT_STRUCTURE:
 CircuitGuard/
-│
-├── app.py # Streamlit Frontend
+├── app.py                     # Streamlit frontend application
 ├── pcb-defect-backend/
-│ ├── main.py # FastAPI Backend
-│ ├── model/
-│ │ └── best.pt # Trained YOLO model
-│ └── uploads/ # Images saved by backend
-│
-├── screenshots/ # UI screenshots
+│   ├── main.py                # FastAPI backend service
+│   ├── model/
+│   │   └── best.pt            # Trained YOLO model (LFS tracked)
+│   └── uploads/               # Images stored by backend for traceability
+├── screenshots/               # Application UI screenshots
 ├── requirements.txt
 ├── packages.txt
 ├── runtime.txt
-├── README.md
+└── README.md
 
+FRONTEND_CAPABILITIES:
+- Upload single or multiple PCB images
+- Sends images to backend via REST API
+- Displays original and annotated images
+- Visualizes defect statistics (bar & donut charts)
+- Enables export of annotated images and reports
 
----
+BACKEND_CAPABILITIES:
+- Accepts images via POST /predict endpoint
+- Saves uploaded images for verification and audit
+- Executes YOLO inference on the backend
+- Returns structured JSON responses to the frontend
 
-## 🔄 System Workflow
+API_SPECIFICATION:
+Endpoint: POST /predict
+Input:
+- Multipart form-data
+- Image file (PNG, JPG, JPEG)
 
-### 🔹 Old Setup (Frontend-only)
-- Streamlit directly loaded YOLO model  
-- Inference + annotation done locally  
-- ❌ No backend  
-- ❌ No image persistence  
-
-### 🔹 Current Setup (Frontend + Backend)
-
-1. User uploads image via **Streamlit frontend**
-2. Frontend sends image → `POST /predict`
-3. **FastAPI backend**
-   - Saves image to `/uploads`
-   - Runs YOLO inference
-   - Returns structured JSON response
-4. Frontend
-   - Displays annotated images
-   - Shows statistics & charts
-   - Enables downloads
-
-✔ This confirms **frontend ↔ backend connection**
-
----
-
-## 📁 Backend Proof of Connection
-
-When an image is uploaded from the frontend, it is saved here:
-
-
----
-
-## 🔄 System Workflow
-
-### 🔹 Old Setup (Frontend-only)
-- Streamlit directly loaded YOLO model  
-- Inference + annotation done locally  
-- ❌ No backend  
-- ❌ No image persistence  
-
-### 🔹 Current Setup (Frontend + Backend)
-
-1. User uploads image via **Streamlit frontend**
-2. Frontend sends image → `POST /predict`
-3. **FastAPI backend**
-   - Saves image to `/uploads`
-   - Runs YOLO inference
-   - Returns structured JSON response
-4. Frontend
-   - Displays annotated images
-   - Shows statistics & charts
-   - Enables downloads
-
-✔ This confirms **frontend ↔ backend connection**
-
----
-
-## 📁 Backend Proof of Connection
-
-When an image is uploaded from the frontend, it is saved here:
-
-pcb-defect-backend/uploads/
-├── 01_missing_hole_10.jpg
-├── 01_spur_09.jpg
-
-
-This proves:
-**Frontend uploads → Backend receives → Backend stores**
-
----
-
-## 🖥️ Frontend (Streamlit)
-
-**Responsibilities**
-- Upload PCB images (single / multiple)
-- Send images to backend API
-- Display:
-  - Original image
-  - Annotated image
-  - Defect statistics & charts
-- Allow result downloads
-
-**Run Frontend**
-```bash
-python -m streamlit run app.py
-📍 URL: http://localhost:8501
-
-⚙️ Backend (FastAPI)
-Responsibilities
-Accept images via /predict
-Save uploaded images
-Run YOLO inference
-Return structured JSON response
-Run Backend
-cd pcb-defect-backend
-uvicorn main:app --reload
-📍 API: http://127.0.0.1:8000
-📘 Swagger Docs: http://127.0.0.1:8000/docs
-
-📡 API Endpoint
-POST /predict
-Input
-Multipart form-data
-Image file (png, jpg, jpeg)
-Sample Response
+Sample_Response:
 {
   "status": "success",
   "defects_detected": {
@@ -215,41 +83,41 @@ Sample Response
   "total_defects": 1
 }
 
-🧠 Model Details
-Model: YOLO (Ultralytics)
-Input: PCB top-view images
-Performance
-mAP@50: 0.98
-Precision: 0.97
-Recall: 0.97
+MODEL_INFORMATION:
+Model_Name: YOLO (Ultralytics)
+Input_Type: PCB top-view images
+Performance_Metrics:
+- mAP@50: 0.98
+- Precision: 0.97
+- Recall: 0.97
 
-⚠️ Known Limitations
-Some visualization is still handled by frontend
-Duplicate images may appear in rare cases
-Backend currently returns limited metadata
+INTEGRATION_PROOF:
+- Images uploaded from the frontend are saved in:
+  pcb-defect-backend/uploads/
+- Inference is executed exclusively in the backend
+- Results are returned via REST API and rendered in frontend
+- Confirms true frontend–backend communication (not local-only execution)
 
-🔮 Future Improvements
-Fully backend-driven rendering
-Database integration (MongoDB / PostgreSQL)
-Authentication & user sessions
-Dockerization
-Cloud deployment (AWS / Azure)
-Async batch processing
+KNOWN_LIMITATIONS:
+- Some visualization logic remains frontend-driven
+- Backend response metadata can be extended further
+- Current setup is optimized for single-node inference
 
+FUTURE_ENHANCEMENTS:
+- Fully backend-driven annotation rendering
+- Database integration for inspection history
+- User authentication and access control
+- Containerization using Docker
+- Cloud deployment (AWS / Azure / GCP)
+- Asynchronous batch processing for large-scale inspection
 
-🛠️ Tech Stack
-Python 3.11
-YOLO (Ultralytics)
-FastAPI
-Streamlit
-OpenCV / PIL
-Altair
-Uvicorn
+AUTHOR:
+Name: Prashant Yadav
+Degree: B.Tech – Computer Science & Engineering (Artificial Intelligence)
+Project_Type: Internship / Applied Machine Learning Project
 
-
-👨‍💻 Author
-Prashant Yadav
-B.Tech CSE (AI)
-PCB Defect Detection – Internship Project
-
+PROJECT_GOAL:
+To demonstrate practical deployment of a computer vision model
+in a real-world, production-style architecture with clean
+engineering practices and scalable design.
 
